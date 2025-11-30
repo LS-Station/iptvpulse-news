@@ -1,20 +1,37 @@
-name: Latest blog post workflow
+name: Latest Blog Posts Workflow
+
 on:
   schedule:
-    - cron: '0 */8 * * *'
-  workflow_dispatch:
+    - cron: '0 */8 * * *'     # প্রতি ৮ ঘণ্টায় একবার চলবে
+  workflow_dispatch:          # ম্যানুয়ালি চালানো যাবে
 
 jobs:
-  update-readme-with-blog:
-    name: Update this repo's README with latest blog posts
+  update-readme:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: gautamkrishnar/blog-post-workflow@master
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update README with latest blog posts
+        uses: anandchowdhary/latest-blog-post-workflow@v1
         with:
-          feed_list: "https://iptvpulse.top/feeds/posts/default?alt=rss"
-          max_post_count: "20"
-          force_image_extraction: "true"
-          template: '<br/><a href="$url"><img src="$img_src" align="left" width="150" hspace="10" style="border-radius:5px;"/></a> <a href="$url"><b>$title</b></a><br/><i>$date</i><br clear="left"/><br/>'
+          feed: https://iptvpulse.top/feeds/posts/default?alt=rss
+          count: 20
+          template: |
+            <br/>
+            <a href="$url">
+              <img src="$image" align="left" width="145" hspace="12" style="border-radius:10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"/>
+            </a>
+            <a href="$url"><b>$title</b></a><br/>
+            <i>$date</i><br clear="left"/>
+            <br/>
+
+      - name: Commit & Push if changed
+        run: |
+          git config user.name "Automated Bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Updated latest blog posts" && git push)
