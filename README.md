@@ -1,3 +1,2 @@
-<!--START_SECTION:blog-posts-->
-
-<!--END_SECTION:blog-posts-->
+<!-- BLOG-POST-LIST:START -->
+<!-- BLOG-POST-LIST:END -->
