@@ -1,41 +1,33 @@
-name: Website Monitor with Screenshot
+name: Update README Blog Posts
 
 on:
   schedule:
-    # প্রতি ৮ ঘন্টা অন্তর চালাবে
-    - cron: '0 */8 * * *' 
-  workflow_dispatch: # ম্যানুয়ালি চালানোর অপশনও থাকবে
+    - cron: '0 */8 * * *' # প্রতি ৮ ঘন্টা
+  workflow_dispatch:
 
 jobs:
-  check-website:
+  update-readme:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y chromium-browser chromium-chromedriver wget
-
-      - name: Take screenshot of the website
-        run: |
-          mkdir -p screenshots
-          chromium-browser --headless --disable-gpu --window-size=1280,720 --screenshot=screenshots/iptvpulse.png https://www.iptvpulse.top/
-      
-      - name: Upload screenshot as artifact
-        uses: actions/upload-artifact@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          name: iptv-screenshot
-          path: screenshots/iptvpulse.png
+          python-version: '3.x'
 
-      - name: Check website status
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Update README with latest blog posts
+        run: python update_readme.py
+
+      - name: Commit and push changes
         run: |
-          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" https://www.iptvpulse.top/)
-          echo "HTTP Status Code: $HTTP_CODE"
-          if [ "$HTTP_CODE" -ne 200 ]; then
-            echo "⚠️ Website is down or returned an error!"
-            exit 1
-          else
-            echo "✅ Website is up and running."
-          fi
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "Update blog posts in README [skip ci]" || echo "No changes to commit"
+          git push
