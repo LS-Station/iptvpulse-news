@@ -1,24 +1,42 @@
-name: Update Blog Posts
+name: Website Monitor with Screenshot
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'
+    # প্রতি ৮ ঘন্টা অন্তর চালাবে
+    - cron: '0 */8 * * *' 
+  workflow_dispatch: # ম্যানুয়ালি চালানোর অপশনও থাকবে
 
 jobs:
-  update:
+  check-website:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - uses: JasonEtco/rss-to-readme@v4
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y chromium-browser chromium-chromedriver wget
+
+      - name: Take screenshot of the website
+        run: |
+          mkdir -p screenshots
+          # Using chromium to take screenshot
+          chromium-browser --headless --disable-gpu --window-size=1280,720 --screenshot=screenshots/iptvpulse.png https://www.iptvpulse.top/
+      
+      - name: Upload screenshot as artifact
+        uses: actions/upload-artifact@v3
         with:
-          feed-url: https://iptvpulse.top/feeds/posts/default?alt=rss
-          readme-section: blog-posts
-          max-items: 23
-          template: |
-            <a href="{{link}}">
-              <img src="{{image}}" width="150" align="left" hspace="12" style="border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.2); margin-bottom:8px">
-            </a>
-            <a href="{{link}}"><b>{{title}}</b></a><br>
-            <small>{{date}}</small><br clear="left"><br>
+          name: iptv-screenshot
+          path: screenshots/iptvpulse.png
+
+      - name: Check website status
+        run: |
+          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" https://www.iptvpulse.top/)
+          echo "HTTP Status Code: $HTTP_CODE"
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "⚠️ Website is down or returned an error!"
+            exit 1
+          else
+            echo "✅ Website is up and running."
+          fi
