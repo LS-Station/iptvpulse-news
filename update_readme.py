@@ -14,13 +14,17 @@ BASE_URL = "https://www.iptvpulse.top/"  # তোমার ব্লগ URL
 # ==========================
 blog_posts = []
 
-for md_file in Path(BLOG_DIR).rglob("*.md"):
+md_files = list(Path(BLOG_DIR).rglob("*.md"))
+print(f"Found {len(md_files)} Markdown files.")  # debug
+
+for md_file in md_files:
     if md_file.name.lower() == "readme.md":
         continue  # skip README itself
 
     try:
         content = md_file.read_text(encoding="utf-8")
-    except:
+    except Exception as e:
+        print(f"Failed to read {md_file}: {e}")
         continue
 
     # Title detect: H1 (# Title)
@@ -35,7 +39,12 @@ for md_file in Path(BLOG_DIR).rglob("*.md"):
     slug = md_file.stem.replace(' ', '-').lower()
     url = BASE_URL + slug
 
+    print(f"Adding post: {title}, Date: {post_date.date()}, URL: {url}")  # debug
     blog_posts.append((post_date, f"- [{title}]({url})"))
+
+if not blog_posts:
+    print("⚠️ No blog posts found. Exiting.")
+    exit(1)
 
 # Sort descending by date (latest first)
 blog_posts.sort(key=lambda x: x[0], reverse=True)
@@ -53,6 +62,7 @@ if README_PATH.exists():
     readme_content = README_PATH.read_text(encoding="utf-8")
 else:
     readme_content = ""
+    print("README.md not found. Creating a new one.")
 
 if start_tag in readme_content and end_tag in readme_content:
     pattern = re.compile(f"{start_tag}.*?{end_tag}", re.DOTALL)
