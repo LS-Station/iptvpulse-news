@@ -1,4 +1,4 @@
-name: Update Latest Blog Posts
+name: Update Blog Posts
 
 on:
   schedule:
@@ -9,76 +9,67 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
 
-      - name: Update README with blog posts
+      - name: Update README with latest 23 blog posts
         run: |
           curl -s "https://iptvpulse.top/feeds/posts/default?alt=rss&max-results=30" -o feed.xml
 
-          cat > generate.js << 'EOF'
+          cat > script.js <<'EOF'
           const fs = require('fs');
-          const { parseStringPromise } = require('xml2js');
+          const xml2js = require('xml2js');
+          const parser = new xml2js.Parser();
 
-          (async () => {
-            const xml = fs.readFileSync('feed.xml', 'utf8');
-            const result = await parseStringPromise(xml);
+          const data = fs.readFileSync('feed.xml', 'utf8');
 
-            let output = "";
+          parser.parseString(data, (err, result) => {
+            if (err) throw err;
 
-            const entries = result.feed.entry || [];
-            for (const item of entries.slice(0, 30)) {
+            let html = "";
+
+            const items = result.feed.entry || [];
+            items.slice(0, 30).forEach(item => {
               const title = item.title[0]._;
-              const link = item.link.find(l => l.$.rel === 'alternate').$.href;
-              const date = new Date(item.published[0]).toLocaleDateString('en-GB', {
-                day: 'numeric', month: 'short', year: 'numeric'
-              });
+              const url = item.link.find(l => l.$.rel === 'alternate').$.href;
+              const date = new Date(item.published[0]).toLocaleDateString('en-GB');
 
-              // থাম্বনেল ফিক্স – এবার সত্যিই ১০০% কাজ করবে
-              let img = "https://via.placeholder.com/150x150.png?text=No+Image";
-              if (item['media$thumbnail'] && item['media$thumbnail'][0] && item['media$thumbnail'][0].$.url) {
+              let img = "https://via.placeholder.com/150x150/333/fff?text=No+Image";
+              if (item['media$thumbnail']?.[0]?.$?.url) {
                 img = item['media$thumbnail'][0].$.url
-                  .replace(/=s\d+(-c)?/, '=s400')
-                  .replace(/\/s\d+(-c)?\//, '/s400/');
+                  .replace(/=s\d+(-c)?/g, '=s400')
+                  .replace(/\/s\d+(-c)?\//g, '/s400/');
               }
 
-              output += `<br/>
-          <a href="${link}">
-            <img src="${img}" align="left" width="150" hspace="12" style="border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.2); margin-bottom:10px;">
-          </a>
-          <a href="${link}"><b>${title}</b></a><br/>
-          <i>${date}</i><br clear="left"/><br/>\n`;
-            }
+              html += `<br/><a href="${url}"><img src="${img}" align="left" width="150" hspace="12" style="border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.2)"/></a><a href="${url}"><b>${title}</b></a><br/><i>${date}</i><br clear="left"/><br/>\n`;
+            });
 
             let readme = fs.readFileSync('README.md', 'utf8');
+            const start = "<!-- BLOG-POST-LIST:START -->";
+            const end   = "<!-- BLOG-POST-LIST:END -->";
 
-            const startMarker = "<!-- BLOG-POST-LIST:START -->";
-            const endMarker   = "<!-- BLOG-POST-LIST:END -->";
-
-            const startIndex = readme.indexOf(startMarker);
-            const endIndex   = readme.indexOf(endMarker);
-
-            if (startIndex !== -1 && endIndex !== -1) {
-              const before = readme.slice(0, startIndex + startMarker.length);
-              const after  = readme.slice(endIndex);
-              fs.writeFileSync('README.md', before + "\n" + output.trim() + "\n" + after);
+            if (readme.includes(start) && readme.includes(end)) {
+              readme = readme.replace(
+                new RegExp(`${start}[\\s\\S]*?${end}`),
+                `${start}\n${html.trim()}\n${end}`
+              );
             } else {
-              fs.appendFileSync('README.md', "\n\n" + startMarker + "\n" + output.trim() + "\n" + endMarker);
+              readme += `\n\n${start}\n${html.trim()}\n${end}`;
             }
-          })();
+
+            fs.writeFileSync('README.md', readme);
+          });
           EOF
 
-          npm install xml2js
-          node generate.js
+          npm install xml2js --no-save
+          node script.js
 
       - name: Commit & Push
         run: |
-          git config user.name "Blog Bot"
-          git config user.email "bot@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add README.md
           git diff --staged --quiet || git commit -m "Updated latest blog posts" && git push
