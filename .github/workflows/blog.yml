@@ -2,7 +2,7 @@ name: Update README Blog Posts
 
 on:
   schedule:
-    - cron: '0 */8 * * *' # প্রতি ৮ ঘন্টা
+    - cron: '0 */8 * * *'  # প্রতি ৮ ঘন্টা
   workflow_dispatch:
 
 jobs:
@@ -17,9 +17,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-
-      - name: Install dependencies
-        run: pip install requests
 
       - name: Update README with latest blog posts
         run: python update_readme.py
