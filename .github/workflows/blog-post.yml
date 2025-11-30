@@ -1,25 +1,68 @@
-name: Latest blog post workflow
+name: Latest Blog Posts
 on:
   schedule:
-    - cron: '0 */8 * * *'
+    - cron: '0 */6 * * *
   workflow_dispatch:
+
 jobs:
-  update-readme-with-blog:
-    name: Update this repo's README with latest blog posts
+  update-readme:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Update README with latest blog posts
-        uses: gautamkrishnar/blog-post-workflow@master
-        with:
-          feed_list: "https://iptvpulse.top/feeds/posts/default?alt=rss"
-          max_post_count: "20"
-          force_image_extraction: "true"
-          # এই লাইনগুলো যোগ করেছি – ছবি ফিক্স হয়ে যাবে
-          image_tag_replacement: 's72-c|s72-w'  # s72-c কে খুঁজে বের করবে
-          image_tag_replacement_with: 's400'    # s400 তে চেঞ্জ করবে (বড় ছবি)
-          disable_image_proxy: "false"          # Proxy চালু রাখবে GitHub এর জন্য
-          template: '<br/><a href="$url"><img src="$img_src" align="left" width="150" hspace="10" style="border-radius:5px;"/></a> <a href="$url"><b>$title</b></a><br/><i>$date</i><br clear="left"/><br/>'
+      - uses: actions/checkout@v4
+
+      - name: Generate Latest Blog Posts with Working Images
+        run: |
+          curl -s "https://iptvpulse.top/feeds/posts/default?alt=rss&max-results=20" -o feed.xml
+
+          cat << 'EOF' > generate.js
+          const fs = require('fs');
+          const parseString = require('xml2js').parseString;
+
+          const xml = fs.readFileSync('feed.xml', 'utf8');
+          parseString(xml, (err, result) => {
+            if (err) throw err;
+
+            let output = "";
+
+            const entries = result.feed.entry || [];
+            entries.slice(0, 20).forEach(item => {
+              const title = item.title[0]._;
+              const link = item.link.find(l => l.$.rel === "alternate").$.href;
+              const published = new Date(item.published[0]).toLocaleDateString('en-GB', {
+                day: 'numeric', month: 'short', year: 'numeric'
+              });
+
+              // Blogger থাম্বনেল বের করা (১০০% কাজ করে)
+              let img = "https://via.placeholder.com/150x150.png?text=No+Image";
+              if (item['media$thumbnail']) {
+                img = item['media$thumbnail'][0].$.url
+                  .replace(/\/s72-c\//, '/s400/')
+                  .replace(/=s72-c$/, '=s400');
+              } else if (item.content) {
+                const match = item.content[0]._match(/<img.*?src=["'](.*?)["']/);
+                if (match) img = match[1].split('?')[0] + '?imgmax=400';
+              }
+
+              output += `<br/><a href="${link}"><img src="${img}" align="left" width="150" hspace="12" style="border-radius:10px; margin-bottom:12px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);"/></a><a href="${link}"><b>${title}</b></a><br/><i>${published}</i><br clear="left"/><br/>\n`;
+            });
+
+            let readme = fs.readFileSync('README.md', 'utf8');
+            const start = "<!-- BLOG-POST-LIST:START -->";
+            const end = "<!-- BLOG-POST-LIST:END -->";
+            const newReadme = readme.replace(
+              new RegExp(`${start}[\\s\\S]*?${end}`),
+              `${start}\n${output.trim()}\n${end}`
+            );
+            fs.writeFileSync('README.md', newReadme);
+          });
+          EOF
+
+          npm install xml2js
+          node generate.js
+
+      - name: Commit & Push
+        run: |
+          git config user.name "Blog Bot"
+          git config user.email "bot@noreply.github.com"
+          git add README.md
+          git diff --staged --quiet || (git commit -m "Updated latest blog posts with images" && git push)
