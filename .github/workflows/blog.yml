@@ -1,18 +1,24 @@
 name: Update Blog Posts
-on: [workflow_dispatch, schedule]
-  - cron: "0 */6 * * *"
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
 
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: gautamkrishnar/blog-post-workflow@master
+
+      - uses: JasonEtco/rss-to-readme@v4
         with:
-          feed_list: "https://iptvpulse.top/feeds/posts/default?alt=rss"
-          max_post_count: 23
+          feed-url: https://iptvpulse.top/feeds/posts/default?alt=rss
+          readme-section: blog-posts
+          max-items: 23
           template: |
-            <br/>
-            <a href="$url"><img src="https://images.weserv.nl/?url=$img_src&h=300&w=500&il" align="left" width="150" hspace="12" style="border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,0.2)"/></a>
-            <a href="$url"><b>$title</b></a><br/>
-            <i>$date</i><br clear="left"/><br/>
+            <a href="{{link}}">
+              <img src="{{image}}" width="150" align="left" hspace="12" style="border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.2); margin-bottom:8px">
+            </a>
+            <a href="{{link}}"><b>{{title}}</b></a><br>
+            <small>{{date}}</small><br clear="left"><br>
