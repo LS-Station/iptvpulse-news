@@ -2,52 +2,67 @@ import re
 from pathlib import Path
 from datetime import datetime
 
-BLOG_DIR = "."
+# --------------------------
+# Configuration
+# --------------------------
+BLOG_DIR = "."  # Markdown files root folder
 README_PATH = Path("README.md")
-BASE_URL = "https://www.iptvpulse.top/"
+BASE_URL = "https://www.iptvpulse.top/"  # তোমার ব্লগ URL
 
+# --------------------------
+# Collect blog posts
+# --------------------------
 blog_posts = []
 
+# rglob সব Markdown file detect করবে
 for md_file in Path(BLOG_DIR).rglob("*.md"):
     if md_file.name.lower() == "readme.md":
-        continue
+        continue  # skip README.md
 
     try:
         content = md_file.read_text(encoding="utf-8")
-    except:
+    except Exception as e:
+        print(f"Failed to read {md_file}: {e}")
         continue
 
+    # Title detect: H1 (# Title) বা filename
     title_match = re.search(r'^#\s+(.*)', content, re.MULTILINE)
     title = title_match.group(1).strip() if title_match else md_file.stem
 
+    # Date detect: frontmatter বা file modified time
     date_match = re.search(r'^date:\s*(\d{4}-\d{2}-\d{2})', content, re.MULTILINE)
     post_date = datetime.strptime(date_match.group(1), "%Y-%m-%d") if date_match else datetime.fromtimestamp(md_file.stat().st_mtime)
 
+    # URL generate
     slug = md_file.stem.replace(' ', '-').lower()
     url = BASE_URL + slug
 
-    # append without any condition
+    # append সব Markdown file
     blog_posts.append((post_date, f"- [{title}]({url})"))
 
-# sort descending
+# sort descending by date
 blog_posts.sort(key=lambda x: x[0], reverse=True)
 blog_posts_text = [item[1] for item in blog_posts]
 
+# --------------------------
+# Update README.md
+# --------------------------
 start_tag = "<!--START_SECTION:blog-posts-->"
 end_tag = "<!--END_SECTION:blog-posts-->"
+
 new_section = f"{start_tag}\n" + "\n".join(blog_posts_text) + f"\n{end_tag}"
 
 if README_PATH.exists():
     readme_content = README_PATH.read_text(encoding="utf-8")
 else:
     readme_content = ""
+    print("README.md not found. Creating a new one.")
 
 if start_tag in readme_content and end_tag in readme_content:
-    import re
     pattern = re.compile(f"{start_tag}.*?{end_tag}", re.DOTALL)
     updated_content = pattern.sub(new_section, readme_content)
 else:
     updated_content = readme_content + "\n\n" + new_section
 
 README_PATH.write_text(updated_content, encoding="utf-8")
-print("✅ README.md updated with latest blog posts")
+print(f"✅ README.md updated with {len(blog_posts)} blog posts")
