@@ -18,10 +18,10 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Update README with latest blog posts
+      - name: Update README
         run: python update_readme.py
 
-      - name: Commit and push changes
+      - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
