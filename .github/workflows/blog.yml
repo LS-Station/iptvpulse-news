@@ -16,5 +16,4 @@ jobs:
         with:
           feed_list: "https://iptvpulse.top/feeds/posts/default?alt=rss"
           max_post_count: "20"
-          force_image_extraction: "true"
-          template: '<br/><a href="$url"><img src="$img_src" align="left" width="150" hspace="10" style="border-radius:5px;"/></a> <a href="$url"><b>$title</b></a><br/><i>$date</i><br clear="left"/><br/>'
+          template: '<a href="$url"><b>$title</b></a><br/><i>$date</i><br/><br/>'
