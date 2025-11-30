@@ -1,8 +1,7 @@
 name: Latest blog post workflow
-
 on:
   schedule:
-    - cron: '0 */8 * * *'  # প্রতি ৮ ঘন্টা
+    - cron: '0 */8 * * *'
   workflow_dispatch:
 
 jobs:
@@ -11,18 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Update README with latest blog posts
-        uses: gautamkrishnar/blog-post-workflow@master
+      - uses: actions/checkout@v3
+      - uses: gautamkrishnar/blog-post-workflow@master
         with:
           feed_list: "https://iptvpulse.top/feeds/posts/default?alt=rss"
           max_post_count: "20"
-          force_image_extraction: "false"
-          template: |
-            {{#posts}}
-            - [{{title}}]({{url}}) <br/><i>{{date}}</i><br/>
-            {{/posts}}
+          force_image_extraction: "true"
+          template: '<br/><a href="$url"><img src="$img_src" align="left" width="150" hspace="10" style="border-radius:5px;"/></a> <a href="$url"><b>$title</b></a><br/><i>$date</i><br clear="left"/><br/>'
