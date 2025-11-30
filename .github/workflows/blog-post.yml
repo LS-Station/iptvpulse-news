@@ -1,22 +1,24 @@
 name: Latest Blog Posts
+
 on:
   schedule:
-    - cron: '0 */6 * * *
+    - cron: '0 */6 * * *'   # প্রতি ৬ ঘণ্টায়
   workflow_dispatch:
 
 jobs:
   update-readme:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Generate Latest Blog Posts with Working Images
+      - name: Fetch RSS & Generate Blog List
         run: |
           curl -s "https://iptvpulse.top/feeds/posts/default?alt=rss&max-results=20" -o feed.xml
 
-          cat << 'EOF' > generate.js
+          cat > generate.js << 'EOF'
           const fs = require('fs');
-          const parseString = require('xml2js').parseString;
+          const { parseString } = require('xml2js');
 
           const xml = fs.readFileSync('feed.xml', 'utf8');
           parseString(xml, (err, result) => {
@@ -29,40 +31,42 @@ jobs:
               const title = item.title[0]._;
               const link = item.link.find(l => l.$.rel === "alternate").$.href;
               const published = new Date(item.published[0]).toLocaleDateString('en-GB', {
-                day: 'numeric', month: 'short', year: 'numeric'
-              });
+                day: '2-digit', month: 'short', year: 'numeric'
+              }).replace(/ /g, ' ');
 
-              // Blogger থাম্বনেল বের করা (১০০% কাজ করে)
-              let img = "https://via.placeholder.com/150x150.png?text=No+Image";
+              // থাম্বনেল বের করা – ১০০% কাজ করে
+              let img = "https://via.placeholder.com/150x150/cccccc/666666?text=No+Image";
               if (item['media$thumbnail']) {
                 img = item['media$thumbnail'][0].$.url
-                  .replace(/\/s72-c\//, '/s400/')
-                  .replace(/=s72-c$/, '=s400');
-              } else if (item.content) {
-                const match = item.content[0]._match(/<img.*?src=["'](.*?)["']/);
-                if (match) img = match[1].split('?')[0] + '?imgmax=400';
+                  .replace(/\/s72-[a-z]+\//, '/s400/')
+                  .replace(/=s72-[a-z]+$/, '=s400');
               }
 
-              output += `<br/><a href="${link}"><img src="${img}" align="left" width="150" hspace="12" style="border-radius:10px; margin-bottom:12px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);"/></a><a href="${link}"><b>${title}</b></a><br/><i>${published}</i><br clear="left"/><br/>\n`;
+              output += `<br/><a href="${link}"><img src="${img}" align="left" width="150" hspace="12" style="border-radius:10px; box-shadow: 0 4px 12px rgba(0,0,0,0.18);"/></a><a href="${link}"><b>${title}</b></a><br/><i>${published}</i><br clear="left"/><br/>\n`;
             });
 
             let readme = fs.readFileSync('README.md', 'utf8');
             const start = "<!-- BLOG-POST-LIST:START -->";
-            const end = "<!-- BLOG-POST-LIST:END -->";
-            const newReadme = readme.replace(
-              new RegExp(`${start}[\\s\\S]*?${end}`),
-              `${start}\n${output.trim()}\n${end}`
-            );
-            fs.writeFileSync('README.md', newReadme);
+            const end   = "<!-- BLOG-POST-LIST:END -->";
+            const regex = new RegExp(`${start}[\\s\\S]*?${end}`);
+            const newContent = `${start}\n${output.trim()}\n${end}`;
+
+            if (readme.match(regex)) {
+              readme = readme.replace(regex, newContent);
+            } else {
+              readme += `\n\n${newContent}`;
+            }
+
+            fs.writeFileSync('README.md', readme);
           });
           EOF
 
           npm install xml2js
           node generate.js
 
-      - name: Commit & Push
+      - name: Commit & Push changes
         run: |
-          git config user.name "Blog Bot"
-          git config user.email "bot@noreply.github.com"
+          git config user.name "Blog Updater Bot"
+          git config user.email "bot@github.com"
           git add README.md
-          git diff --staged --quiet || (git commit -m "Updated latest blog posts with images" && git push)
+          git diff --staged --quiet || (git commit -m "Updated latest blog posts with working images" && git push)
