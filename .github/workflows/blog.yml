@@ -21,11 +21,10 @@ jobs:
       - name: Take screenshot of the website
         run: |
           mkdir -p screenshots
-          # Using chromium to take screenshot
           chromium-browser --headless --disable-gpu --window-size=1280,720 --screenshot=screenshots/iptvpulse.png https://www.iptvpulse.top/
       
       - name: Upload screenshot as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: iptv-screenshot
           path: screenshots/iptvpulse.png
